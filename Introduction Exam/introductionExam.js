@@ -299,7 +299,7 @@ async function validateAndStartExam() {
         sessionStorage.setItem('studentInfo', JSON.stringify(studentSession));
         // Redirect to exam page with class parameter
         setTimeout(() => {
-            const examUrl = `/Real Quiz Exams/realQuizItems.html?class=${selectedClass}&subject=${subject}`;
+            const examUrl = `../Real Quiz Exams/realQuizItems.html?class=${selectedClass}&subject=${subject}`;
             window.location.href = examUrl;
         }, 3000);
 
@@ -396,4 +396,5 @@ window.studentLoginFunctions = {
     findStudentByDetails,
     getStudentsBySubjectAndClass,
     validateAndStartExam
+
 };
