@@ -55,12 +55,17 @@ let answeredStatus = [];
 let viewedStatus = [];
 let userAnswers = [];
 let randomQuestions = [];
+let openExam;
+
 
 // Error handling function
 function errorhandlinginweb(message) {
     mainEl.style.display = 'none';
     alertEl.style.display = 'block';
     alertEl.textContent = message;
+    timerEl.style.display = 'none';
+    uniqueEl.style.display = 'none';
+    welcomeMessage.textContent = `${studentInformation.firstName  || `Guest`}, Error loading exam...`;
 }
 
 // Check if quiz is already completed in Supabase
@@ -121,6 +126,9 @@ async function initializeStudentInfo() {
         // Set welcome message and unique ID
         uniqueEl.textContent = `Unique Id: ${studentInformation.uniqueId}`;
         welcomeMessage.textContent = `Welcome ${studentInformation.firstName} ${studentInformation.lastName}`;
+        const titles = `Student ${studentInformation.subject} Examination for ${studentInformation.class}`;
+        document.title = titles;
+
         
         // Check if quiz is already completed in Supabase
         const isCompleted = await isQuizAlreadyCompleted(studentInformation.uniqueId, studentInformation.subject);
@@ -136,6 +144,7 @@ async function initializeStudentInfo() {
         return false;
     }
 }
+
 
 // Get exam configuration from Supabase
 async function getExamConfig() {
@@ -379,6 +388,65 @@ async function saveFinalResults() {
     }
 }
 
+async function openandCloseExamination() {
+    await initializeStudentInfo();
+    try {
+        const { data, error } = await supabase
+            .from('exam_configs')
+            .select('is_open, date_exam, time_exam')
+            .eq('classes_student', studentInformation.questionClaass || studentInformation.class)
+            .eq('subject_selected', studentInformation.subject)
+            .single();
+
+        if (error) throw error;
+        return data; // { is_open, date_exam, time_exam }
+    } catch (err) {
+        console.error('Error fetching exam status:', err);
+        return null;
+    }
+}
+
+(async () => {
+    const resultDate = await openandCloseExamination();
+    if (!resultDate) return;
+
+    const { is_open: isOpen, date_exam: dateExam, time_exam: timeExam } = resultDate;
+    let openExam = false;
+
+    if (isOpen === false) {
+        const today = new Date();
+        const currentDate = today.toISOString().split('T')[0]; // yyyy-mm-dd
+
+        // Check if today's date matches exam date
+        if (dateExam !== currentDate) {
+            errorhandlinginweb('The date has not reached or passed. Please contact the admin to open the exam');
+            
+            
+            return;
+        }
+
+        // Compare time
+        const examDateTime = new Date(`${dateExam}T${timeExam}`);
+        const thirtyMinutesBefore = new Date(examDateTime.getTime() - 30 * 60 * 1000);
+        const threeHoursAfter = new Date(examDateTime.getTime() + 3 * 60 * 60 * 1000);
+
+        if (today >= thirtyMinutesBefore && today <= threeHoursAfter) {
+            openExam = true;
+        } else {
+            errorhandlinginweb('You can only login 30 minutes before and up to 3 hours after the exam time.');
+            
+            return;
+        }
+    } else {
+        openExam = true;
+    }
+
+    if (openExam) {
+        console.log('Exam is open for student!');
+        // Continue with exam process
+    }
+})();
+
 // Get student's quiz results from Supabase
 async function getStudentResults(uniqueId, subject = null) {
     try {
@@ -436,6 +504,7 @@ function displayQuestion() {
         saveProgress();
     }
 }
+
 
 // Function to handle question images
 function handleQuestionImage(question) {
@@ -738,11 +807,10 @@ optionAll.forEach((el, index) => {
 });
 
 // Navigation event listeners
-nextEl.addEventListener('click', async () => {
+async function handleNextAction() {
     saveSelection();
     
     if (index === randomQuestions.length - 1) {
-        // Submit quiz
         let confirmQuiz = confirm('Are you sure you want to submit the quiz?');
         if (confirmQuiz) {
             markResult();
@@ -756,17 +824,37 @@ nextEl.addEventListener('click', async () => {
     index++;
     displayQuestion();
     restoreSelection();
+}
+
+nextEl.addEventListener('click', handleNextAction);
+
+document.addEventListener('keydown', (e) => {
+    // Trigger Next button on Enter or Right Arrow
+    if (e.key === 'Enter' || e.key === 'ArrowRight'  ||  e.key.toLowerCase === 'n') {
+        handleNextAction();
+    }
 });
 
-prevEl.addEventListener('click', () => {
+function goToPreviousQuestion() {
     saveSelection();
-    
+
     if (index > 0) {
         index--;
         displayQuestion();
         restoreSelection();
     }
+}
+
+// Click Event
+prevEl.addEventListener('click', goToPreviousQuestion);
+
+// Keydown Event
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft'  || e.key.toLowerCase === 'p') {
+        goToPreviousQuestion();
+    }
 });
+
 
 // Auto-save before page unload
 window.addEventListener('beforeunload', async (e) => {
