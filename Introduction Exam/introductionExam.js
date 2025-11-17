@@ -24,8 +24,12 @@ const validClasses = [];
 const jssBranches = ['agu', 'ayam', 'barama', 'damisa', 'ekpe', 'ekun'];
 const ssBranches = ['agu', 'ayam', 'barama', 'damisa', 'ekpe'];
 let questionclass;
+document.title = `Student introduction examination for ${selectedClass}`;
 
 switch (true) {
+    case !selectedClass || validClasses.includes(selectedClass):
+        window.location.href = '/Error Page/ErrorPage.html';
+     break;
     case selectedClass.startsWith('JSS1'):
         questionclass = 'jss1';
         break;
@@ -83,6 +87,7 @@ console.log(validClasses)
 // Redirect to error page if class is invalid
 if (!selectedClass || !validClasses.includes(selectedClass)) {
      window.location.href = '/Error Page/ErrorPage.html';
+     console.log('hi');
 }
 else if(selectedClass.includes('EKPE')){
     allSubjects = [ "Mathematics", "English", "Literature in English", "Christian Religious Studies",
@@ -147,13 +152,13 @@ const getStudentsByClass = async function(selectedClass) {
 };
 
 // Method 2: Get a specific student by details and class
-const findStudentByDetails = async function(firstName, lastName, uniqueId, selectedClass) {
+const findStudentByDetails = async function( uniqueId, selectedClass) { //firstName, lastName,
     try {
         const { data: students, error } = await supabase
             .from('students')
             .select('*')
-            .eq('first_name', firstName)
-            .eq('last_name', lastName)
+            // .eq('first_name', firstName)
+            // .eq('last_name', lastName)
             .eq('unique_id', uniqueId)
             .eq('class', selectedClass);
 
@@ -166,8 +171,8 @@ const findStudentByDetails = async function(firstName, lastName, uniqueId, selec
             const student = students[0];
             return {
                 id: student.id,
-                firstName: student.first_name,
-                lastName: student.last_name,
+                // firstName: student.first_name,
+                // lastName: student.last_name,
                 UniqueId: student.unique_id,
                 class: student.class,
                 subjects: student.subjects || []
@@ -263,7 +268,7 @@ async function validateAndStartExam() {
 
     try {
         // Check if student exists in Supabase for the specific class
-        const student = await findStudentByDetails(firstName, lastName, uniqueId, selectedClass);
+        const student = await findStudentByDetails( uniqueId, selectedClass); //firstName, lastName,
 
         if (!student) {
             showAlert(`Invalid student details for class ${selectedClass}! Please check your information and try again.`, 'error');
@@ -297,9 +302,10 @@ async function validateAndStartExam() {
         window.currentStudentSession = studentSession;
 
         sessionStorage.setItem('studentInfo', JSON.stringify(studentSession));
+        
         // Redirect to exam page with class parameter
         setTimeout(() => {
-            const examUrl = `../Real Quiz Exams/realQuizItems.html?class=${selectedClass}&subject=${subject}`;
+            const examUrl = `/Real Quiz Exams/realQuizItems.html?class=${selectedClass}&subject=${subject}`;
             window.location.href = examUrl;
         }, 3000);
 
@@ -396,5 +402,4 @@ window.studentLoginFunctions = {
     findStudentByDetails,
     getStudentsBySubjectAndClass,
     validateAndStartExam
-
 };
